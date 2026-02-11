@@ -1,0 +1,9 @@
+langchain-huggingface 
+langchain
+langchain_core
+langchain-community
+huggingface_hub
+python-dotenv
+scikit-learn 
+tensorflow 
+langchain 

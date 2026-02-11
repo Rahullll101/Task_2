@@ -1,0 +1,82 @@
+import os
+import json
+from dotenv import load_dotenv
+from langchain_core.messages import HumanMessage
+from langchain_huggingface import HuggingFaceEndpoint, ChatHuggingFace
+
+load_dotenv()
+HF_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
+
+if not HF_TOKEN:
+    raise ValueError("HUGGINGFACEHUB_API_TOKEN not found in .env")
+
+def run_explanation_pipeline(ml_metrics, dl_metrics):
+
+    if ml_metrics["f1"] >= dl_metrics["f1"]:
+        final_model = ml_metrics
+        selected_model = ml_metrics["model"]
+        comparison_text = "Random Forest achieved a higher F1-score than the MLP model."
+    else:
+        final_model = dl_metrics
+        selected_model = dl_metrics["model"]
+        comparison_text = "MLP achieved a higher F1-score than the Random Forest model."
+
+    prompt = f"""
+You are an AI assistant explaining a loan approval decision.
+
+Model Evaluation Results:
+- Random Forest F1-score: {ml_metrics['f1']}
+- MLP (ANN) F1-score: {dl_metrics['f1']}
+
+Decision Rule:
+Final model selected strictly using F1-score.
+
+Selected Model:
+{selected_model}
+
+Respond ONLY with valid JSON.
+End response with }} and do not truncate.
+
+{{
+  "prediction": "Loan Approved or Loan Rejected",
+  "confidence": "{final_model['confidence']}",
+  "ml_vs_dl_comparison": "{comparison_text}",
+  "llm_explanation": "Complete explanation in 2–3 sentences"
+}}
+"""
+
+    endpoint = HuggingFaceEndpoint(
+        repo_id="openai/gpt-oss-120b",
+        task="conversational",
+        huggingfacehub_api_token=HF_TOKEN,
+        max_new_tokens=600,
+        temperature=0.2
+    )
+
+    chat_llm = ChatHuggingFace(llm=endpoint)
+    response = chat_llm.invoke([HumanMessage(content=prompt)])
+    raw_text = response.content.strip()
+
+    json_start = raw_text.find("{")
+    json_end = raw_text.rfind("}")
+
+    if json_start == -1 or json_end == -1:
+        raise ValueError("No JSON returned by LLM")
+
+    json_str = raw_text[json_start:json_end + 1]
+
+    try:
+        llm_output = json.loads(json_str)
+    except json.JSONDecodeError:
+        llm_output = {
+            "prediction": "Loan Approved",
+            "confidence": final_model["confidence"],
+            "ml_vs_dl_comparison": comparison_text,
+            "llm_explanation": "LLM response was partially truncated; decision is based on higher F1-score."
+        }
+
+    os.makedirs("../outputs", exist_ok=True)
+    with open("../outputs/final_output.json", "w") as f:
+        json.dump(llm_output, f, indent=4)
+
+    return llm_output

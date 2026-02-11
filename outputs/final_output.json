@@ -1,0 +1,6 @@
+{
+    "prediction": "Loan Approved",
+    "confidence": "82.66%",
+    "ml_vs_dl_comparison": "Random Forest achieved a higher F1-score than the MLP model.",
+    "llm_explanation": "The Random Forest model was chosen because it attained the highest F1-score (0.827) among the candidates, indicating better overall classification performance. Based on this model, the applicant meets the criteria for loan approval with a confidence of approximately 82.7%. This decision reflects the model's ability to balance precision and recall effectively."
+}
