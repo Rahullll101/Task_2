@@ -1,237 +1,182 @@
 # 📌 Project Overview
 
-This project demonstrates a complete end-to-end AI pipeline that integrates three complementary components. It combines classical Machine Learning, Deep Learning, and a Large Language Model to address loan approval prediction and explainability. The core idea is to keep prediction logic in ML/DL models and use the LLM only for human-friendly explanations.
+This project implements an end-to-end AI pipeline for **loan approval prediction and explainability**. The system combines classical Machine Learning (ML), Deep Learning (DL), and a Large Language Model (LLM) to deliver both predictive performance and human-readable justifications. The design ensures that **ML/DL models make predictions** while the **LLM is used solely for explanations**.
 
-- Machine Learning (ML) for robust tabular prediction  
-- Deep Learning (DL) using a simple neural network (ANN / MLP)  
-- Large Language Model (LLM) for explainability  
+- **Machine Learning:** Random Forest Classifier for tabular data.
+- **Deep Learning:** Multilayer Perceptron (MLP) via scikit-learn.
+- **LLM:** Natural-language explanations via Hugging Face's GPT-OSS-120B.
 
-The system predicts loan approval from a CSV dataset and then uses an LLM to explain the final decision in natural language, returning the result in JSON format.
+> ⚠️ **Note:** The LLM never predicts; it only explains decisions already made by the ML/DL models.
 
-- ⚠️ **Important:** The LLM is not used for prediction. It is used only as an explanation layer.
+---
 
 ## 🎯 Objectives
 
-This section summarizes what the pipeline is designed to achieve end to end.
+- Train, tune, and evaluate both ML and DL models on the same preprocessed tabular dataset.
+- Select the best-performing model using F1-score.
+- Generate a natural-language explanation for the prediction using the LLM.
+- Output a structured JSON containing the decision, confidence, comparison, and explanation.
 
-- Train one ML model and one DL model  
-- Evaluate both models fairly using standard metrics  
-- Select the best model using F1-score  
-- Convert model results into a text input (prompt)  
-- Use an LLM to generate a natural-language explanation  
-- Return output in structured JSON format  
+---
+
+## 🔁 Execution Modes
+
+The project supports two logical phases that run independently. The **Training Phase** handles model tuning and saving of all artifacts, while the **Inference Phase** is the default execution in `main.py`. During inference, `main.py` loads pre-trained models and metrics instead of retraining them. This separation improves modularity and makes the system easier to deploy.
+
+---
 
 ## 📂 Dataset Description
 
-The system expects a tabular CSV dataset focused on loan applications. It contains a binary target field and multiple feature categories.
+- **Format:** CSV with tabular data.
+- **Rows:** ~45,000
+- **Target:** `loan_status` (binary)
+- **Features:**
+  - Demographics: age, gender, education
+  - Financials: income, credit score
+  - Loan details: amount, intent, interest rate
+  - Credit history
 
-- **Format:** CSV (Tabular Data)  
-- **Rows:** ~45,000  
-- **Target Column:** `loan_status`  
-
-**Feature Categories:**
-
-- Applicant demographics (age, gender, education)  
-- Financial data (income, credit score)  
-- Loan details (amount, interest rate, intent)  
-- Credit history indicators  
-
-This dataset is ideal for comparing tree-based ML models vs neural networks.
+---
 
 ## 🧠 Models Used
 
-This pipeline trains two complementary models on the same preprocessed data. Their performance is compared numerically before selecting the winner.
+### 1️⃣ Random Forest Classifier (ML)
 
-### 1️⃣ Machine Learning Model — Random Forest Classifier
+- **Why:** Strong performance on tabular, structured data.
+- **Features:** Handles non-linearity, robust to noise, requires minimal feature scaling.
+- **Validation:** Uses Out-Of-Bag (OOB) score for additional assessment.
+- **Saved as:** `models/random_forest.pkl`
 
-This is the classical ML baseline that works very well on tabular data. It captures complex relationships without heavy feature engineering.
+### 2️⃣ MLPClassifier (DL)
 
-**Why Random Forest?**
+- **Why:** Enables direct ML vs DL comparison on tabular data.
+- **Library:** scikit-learn's `MLPClassifier` (not TensorFlow/Keras).
+- **Architecture:** Configurable hidden layers, trained on scaled features.
+- **Saved as:** `models/mlp_classifier.pkl`
 
-- Excellent performance on structured/tabular data  
-- Handles non-linear relationships  
-- Robust to noise and feature scaling  
-- Strong baseline for financial datasets  
+---
 
-- **Saved as:** `models/random_forest.pkl`  
+## 🔬 Hyperparameter Optimization
 
-### 2️⃣ Deep Learning Model — Artificial Neural Network (ANN / MLP)
+Both models are tuned using `RandomizedSearchCV` with `StratifiedKFold` (k=5) cross-validation:
 
-This is a simple multilayer perceptron designed for tabular input. It operates on scaled and encoded features.
+- **Random Forest:** n_estimators, max_depth, min_samples_split, class_weight, etc.
+- **MLPClassifier:** hidden_layer_sizes, activation, alpha, learning_rate_init, batch_size.
 
-**Architecture:**
+This ensures a fair and robust comparison by searching for each model’s best configuration.
 
-- Input → Dense(128) → Dense(64) → Dense(32) → Output (Sigmoid)  
+---
 
-**Training Details:**
+## ⚖️ Handling Class Imbalance
 
-- Optimizer: Adam  
-- Loss: Binary Crossentropy  
-- Regularization: Dropout  
-- Early stopping to avoid overfitting  
+The dataset contains an imbalance between approved and rejected loans. The stratified train-test split ensures similar class distribution in both sets. `StratifiedKFold` preserves class ratios during cross-validation. Random Forest can use `class_weight` settings when enabled to reduce majority-class bias. These choices reflect awareness of real-world ML challenges.
 
-**Why ANN (MLP)?**
-
-- Satisfies the “simple neural network” requirement  
-- Enables ML vs DL comparison  
-- Learns non-linear feature interactions  
-
-- **Saved as:** `models/mlp_model.h5`  
+---
 
 ## 📊 Model Evaluation & Selection
 
-The system evaluates both models using standard classification metrics. This ensures a fair and quantitative comparison between ML and DL.
+- **Metrics:** Accuracy, Precision, Recall, F1-score.
+- **Selection Rule:** The model with the highest test F1-score is selected for the final prediction.
+- **Storage:** Model performance metrics are saved to:
+  - `models/ml_metrics.json`
+  - `models/dl_metrics.json`
 
-### Evaluation Metrics
+---
 
-Both ML and DL models are evaluated using:
+## 📈 Sample Performance Snapshot
 
-- Accuracy  
-- Precision  
-- Recall  
-- F1-score  
+| Model         | Accuracy | Precision | Recall | F1-score |
+|--------------|----------|-----------|--------|----------|
+| Random Forest | 0.9298  | 0.8559    | 0.8225 | 0.8389   |
+| MLPClassifier | 0.9188  | 0.8775    | 0.7375 | 0.8014   |
 
-### 🔑 Model Selection Rule
+In this configuration, Random Forest achieved the highest F1-score and was selected as the final prediction model.
 
-The final model is selected strictly based on F1-score. This metric provides the best balance between precision and recall for loan approval problems.
-
-- 📌 Decision logic is implemented in code — not by the LLM.
+---
 
 ## 📈 Confidence Calculation
 
-The pipeline computes a realistic confidence score from the model predictions. It avoids overconfident outputs driven by a few extreme predictions.
+- **Definition:** Confidence is the **predicted probability of the selected class** for the given applicant, not an average over the test set.
+- **Reason:** This provides a true, personalized certainty level for each prediction.
 
-- Model confidence is calculated as: mean predicted probability across the test dataset.  
+---
 
-This avoids misleading 100% confidence caused by outlier predictions and provides a realistic estimate.
+## 🔎 Why Random Forest Often Outperforms MLP on Tabular Data
+
+Random Forests excel at capturing complex, non-linear relationships in structured datasets, handling missing values, and requiring minimal feature engineering. MLPs can underperform due to:
+- Sensitivity to feature scaling and encoding.
+- Need for large data and tuning to avoid overfitting.
+- Less interpretability on tabular data without careful design.
+
+---
 
 ## 🤖 LLM Integration (Explainability Layer)
 
-The LLM serves as a pure explainability layer. It receives model metrics and decisions as text and returns a human-friendly justification in JSON.
+- **Prompt:** The selected model, its metrics, and the final decision are converted to a prompt for the LLM.
+- **Model:** `openai/gpt-oss-120b` via Hugging Face, orchestrated by LangChain.
+- **Role:** Only explains the decision; does not influence or make predictions.
+- **Output:** Structured JSON with explanation.
 
-### What does “Take a text input and use an LLM” mean?
+---
 
-The phrase describes how the system interacts with the LLM.
+## 🧩 System Architecture
 
-- Convert model results and decision logic into a text prompt  
-- Pass this prompt to an LLM  
-- Let the LLM explain the decision in natural language  
-- Return output in JSON format  
-
-### 🔍 LLM Details
-
-The project uses an open-source LLM via Hugging Face. LangChain wraps the endpoint to simplify prompting and parsing.
-
-- Model: `openai/gpt-oss-120b`  
-- Framework: LangChain + HuggingFaceEndpoint  
-- Role: Explanation only (no prediction)  
-
-## 🧩 Architecture Diagram
-
-This diagram shows the logical flow of data from raw CSV to final JSON explanation. It highlights where ML/DL prediction ends and LLM explanation begins.
-
-### 📐 System Architecture (Logical View)
-
-```text
-                    ┌───────────────────┐
-                    │   Loan CSV Data   │
-                    └─────────┬─────────┘
-                              │
-                              ▼
-                  ┌───────────────────────┐
-                  │   Data Preprocessing  │
-                  │ (cleaning, encoding)  │
-                  └─────────┬─────────────┘
-                            │
-            ┌───────────────┴───────────────┐
-            ▼                               ▼
-┌─────────────────────┐           ┌─────────────────────┐
-│ Random Forest (ML)  │           │   MLP / ANN (DL)    │
-│  - Tabular model    │           │  - Neural network   │
-└─────────┬───────────┘           └─────────┬───────────┘
-          │                                   │
-          ▼                                   ▼
-     ML Metrics                          DL Metrics
-          │                                   │
-          └───────────────┬─────────────┘
-                          ▼
-                ┌─────────────────────┐
-                │ Model Selection     │
-                │   (F1-score)        │
-                └─────────┬───────────┘
-                          ▼
-                ┌─────────────────────┐
-                │ Text Prompt Builder │
-                │ (metrics → text)    │
-                └─────────┬───────────┘
-                          ▼
-                ┌─────────────────────┐
-                │ LLM (GPT-OSS-120B)  │
-                │ Explanation Layer   │
-                └─────────┬───────────┘
-                          ▼
-                ┌─────────────────────┐
-                │ JSON Explanation    │
-                └─────────────────────┘
+```mermaid
+flowchart TD
+    A[Loan CSV Data] --> B[Data Preprocessing]
+    B --> C[Random Forest - ML]
+    B --> D[MLPClassifier - DL]
+    C --> E[ML Metrics]
+    D --> F[DL Metrics]
+    E --> G[Compare F1-score, Select Model]
+    F --> G
+    G --> H[Build LLM Prompt]
+    H --> I[LLM Explanation Layer]
+    I --> J[JSON Explanation Output]
 ```
 
-📌 **Key Highlight:**
+---
 
-- Prediction → done by ML/DL  
-- Explanation → done by LLM  
+## 🔄 Workflow Diagram
 
-## 🔄 Workflow Diagram (Execution Flow)
-
-This list summarizes the end-to-end execution steps. It follows the same logical order as the code.
-
-```text
-Start
-  ↓
-Load CSV Dataset
-  ↓
-Preprocess Data
-  ↓
-Train ML Model (Random Forest)
-  ↓
-Evaluate ML Metrics
-  ↓
-Train DL Model (MLP)
-  ↓
-Evaluate DL Metrics
-  ↓
-Compare Models (F1-score)
-  ↓
-Select Best Model
-  ↓
-Build Text Prompt
-  ↓
-Call LLM for Explanation
-  ↓
-Generate JSON Output
-  ↓
-Save Output
-  ↓
-End
+```mermaid
+flowchart TD
+    Start[Start Pipeline] --> Load[Load CSV Dataset]
+    Load --> Preprocess[Preprocess Data]
+    Preprocess --> TrainML[Train Random Forest]
+    TrainML --> EvalML[Evaluate RF Metrics]
+    EvalML --> TrainDL[Train MLPClassifier]
+    TrainDL --> EvalDL[Evaluate MLP Metrics]
+    EvalDL --> Compare[Compare Models (F1-score)]
+    Compare --> Select[Select Best Model]
+    Select --> Prompt[Build LLM Prompt]
+    Prompt --> LLM[Call LLM for Explanation]
+    LLM --> Output[Generate JSON Output]
+    Output --> End[End]
 ```
+
+---
 
 ## 📁 Project Structure
 
-The file tree below shows how data, code, models, and outputs are organized. This matches the expectations of the code paths used in the scripts.
-
 ```text
-task_2A/
+project_root/
 │
 ├── data/
 │   └── loan_data.csv
 │
 ├── models/
 │   ├── random_forest.pkl
-│   └── mlp_model.h5
+│   ├── mlp_classifier.pkl
+│   ├── scaler.pkl
+│   └── feature_columns.pkl
 │
 ├── src/
+│   ├── __init__.py
 │   ├── preprocessing.py
 │   ├── train_ml.py
 │   ├── train_mlp.py
+│   ├── predict_new.py
 │   ├── compare_N_explain.py
 │   └── main.py
 │
@@ -243,368 +188,308 @@ task_2A/
 └── README.md
 ```
 
-## ▶️ How to Run (Single Command)
-
-You can reproduce the entire pipeline with a few simple steps. The process covers setup, dependency installation, and full execution.
-
-1. **Set Hugging Face Token**  
-   Create a `.env` file:
-
-   ```bash
-   HUGGINGFACEHUB_API_TOKEN=hf_your_token_here
-   ```
-
-2. **Install dependencies**
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Run entire pipeline**
-
-   ```bash
-   cd src
-   python main.py
-   ```
-
-This single command:
-
-- Trains ML and DL models  
-- Saves trained models  
-- Compares performance  
-- Calls LLM  
-- Generates JSON explanation  
-
-## 🧾 Final Output Format
-
-The final JSON file contains both the decision and the explanation. The LLM produces the explanation text using the prompt constructed from model metrics.
-
-```json
-{
-  "prediction": "Loan Approved",
-  "confidence": "98.7%",
-  "ml_vs_dl_comparison": "Random Forest achieved a higher F1-score than the MLP model.",
-  "llm_explanation": "The loan was approved because the applicant demonstrates strong financial stability and low risk of default."
-}
-```
-
 ---
 
 # 📦 Integrated ML–DL–LLM Loan Approval System Documentation
 
-This documentation details each file in your system, providing a comprehensive guide to the logic, data flow, and ML/DL/LLM integration for loan approval prediction and explainability.
-
----
-
-## `compare_N_explain.py`
-
-This module powers the **model comparison and LLM-based explanation** layer. It selects the best model based on F1-score, crafts a prompt for a Large Language Model (LLM), and parses its explanation into a structured JSON output.
-
-### Key Responsibilities
-
-- **Environment Setup:** Loads the Hugging Face API token from `.env`.
-- **Model Selection:** Compares ML and DL models by their F1-scores.
-- **LLM Explanation:** Forms a prompt for the LLM, invokes it, and extracts a valid JSON explanation.
-- **Output Saving:** Saves the LLM's explanation to `../outputs/final_output.json`.
-
-### Main Function
-
-```python
-def run_explanation_pipeline(ml_metrics, dl_metrics):
-    # Select model by F1-score
-    # Formulate prompt for LLM
-    # Query HuggingFace LLM for JSON explanation
-    # Parse and save response
-    # Return explanation as dict
-```
-
-### Model Selection Logic
-
-- **If Random Forest F1 ≥ MLP F1:** Select Random Forest.
-- **Else:** Select MLP.
-- **Comparison phrase** is generated for JSON output.
-
-### LLM Prompt & Output
-
-- LLM is instructed to return a **valid JSON** with:
-  - `prediction`
-  - `confidence`
-  - `ml_vs_dl_comparison`
-  - `llm_explanation`
-
-- The code **extracts JSON** from the LLM output robustly, with a fallback if parsing fails.
-
-### Output Example
-
-```json
-{
-  "prediction": "Loan Approved",
-  "confidence": "82.66%",
-  "ml_vs_dl_comparison": "Random Forest achieved a higher F1-score than the MLP model.",
-  "llm_explanation": "The Random Forest model was chosen because it attained the highest F1-score (0.827) among the candidates, indicating better overall classification performance. Based on this model, the applicant meets the criteria for loan approval with a confidence of approximately 82.7%. This decision reflects the model's ability to balance precision and recall effectively."
-}
-```
-
-### Data and Flow Diagram
-
-```mermaid
-flowchart TD
-    A[ML Metrics] --> C[Compare F1-score]
-    B[DL Metrics] --> C
-    C --> D{Select Model}
-    D --> E[Prepare LLM Prompt]
-    E --> F[Query LLM HuggingFace]
-    F --> G[Parse JSON]
-    G --> H[Save to final_output json]
-```
+This section details the purpose, logic, and structure of each file in the system.
 
 ---
 
 ## `__init__.py`
 
-This file is intentionally left empty. Its presence makes the directory a **Python package**, allowing for proper module imports within the project structure.
+This file is **empty** and exists only to mark the `src` directory as a Python package. It enables module imports between scripts in the folder.
 
 ---
 
 ## `main.py`
 
-This is the **entry point** for running the full end-to-end pipeline. It coordinates model training, comparison, and explanation generation.
+This script is the **pipeline orchestrator**. It loads trained models and metrics, compares their performance, predicts for a new applicant, and generates an LLM-based explanation.
 
-### What It Does
+### Responsibilities
 
-- **Trains the ML model** (Random Forest)
-- **Trains the DL model** (MLP / ANN)
-- **Compares** their performance and triggers LLM-based explanation
-- **Notifies** user of progress and output location
+- Load trained models and data transformers from disk.
+- Load model evaluation metrics (from JSON files).
+- Select the best model based on F1-score.
+- Predict the approval decision for a demo applicant.
+- Format and display prediction and confidence.
+- Trigger the explanation generation pipeline via the LLM.
+- Save the final output as a JSON file.
 
-### Code Walkthrough
+### Core Process
 
 ```python
 def main():
-    print("Starting end-to-end pipeline...\n")
+    print("Starting end-to-end pipeline (Inference Mode)...")
 
-    print("Training ML model (Random Forest)...")
-    ml_metrics = train_ml()
-    print("ML Metrics:", ml_metrics, "\n")
+    # Load trained models and artifacts
+    rf_model = joblib.load("../models/random_forest.pkl")
+    mlp_model = joblib.load("../models/mlp_classifier.pkl")
+    scaler = joblib.load("../models/scaler.pkl")
+    feature_columns = joblib.load("../models/feature_columns.pkl")
 
-    print("Training DL model (MLP / ANN)...")
-    dl_metrics = train_mlp()
-    print("DL Metrics:", dl_metrics, "\n")
+    # Load metrics
+    with open("../models/ml_metrics.json") as f:
+        ml_metrics = json.load(f)
+    with open("../models/dl_metrics.json") as f:
+        dl_metrics = json.load(f)
 
-    print("Running comparison + LLM explanation...")
-    run_explanation_pipeline(ml_metrics, dl_metrics)
+    # Select model based on F1-score
+    if ml_metrics["f1"] >= dl_metrics["f1"]:
+        selected_model, selected_type = rf_model, "ML"
+    else:
+        selected_model, selected_type = mlp_model, "DL"
 
-    print("\n Pipeline completed successfully")
+    # Run prediction on new applicant data
+    prediction, confidence_value = predict_new_input(
+        person_age=35, person_gender="male", person_education="Bachelor", person_income=60000,
+        person_emp_exp=5, person_home_ownership="RENT", loan_amnt=15000, loan_intent="PERSONAL",
+        loan_int_rate=12.5, loan_percent_income=0.25, cb_person_cred_hist_length=6, credit_score=720,
+        previous_loan_defaults_on_file="No", model=selected_model, scaler=scaler,
+        feature_columns=feature_columns, model_type=selected_type
+    )
+
+    final_prediction_label = "Loan Approved" if prediction == 1 else "Loan Rejected"
+    confidence = f"{confidence_value * 100:.2f}%"
+    print(f"Final Prediction: {final_prediction_label}")
+    print(f"Confidence: {confidence}")
+
+    # Generate and save LLM explanation
+    run_explanation_pipeline(ml_metrics, dl_metrics, final_prediction_label, confidence)
+    print("Pipeline completed successfully.")
     print("Output saved to outputs/final_output.json")
-
-if __name__ == "__main__":
-    main()
 ```
 
-### Process Overview
+---
+
+## `predict_new.py`
+
+This module handles **prediction for new applicant data** using the selected model and the preprocessing pipeline.
+
+### Responsibilities
+
+- Accepts applicant features as function arguments.
+- Builds a single-row DataFrame.
+- One-hot encodes and aligns features to match training columns.
+- Applies scaling if needed (for DL).
+- Predicts the class and confidence using the model.
+- Returns the prediction and confidence score.
+
+### Core Function
+
+```python
+def predict_new_input(
+    person_age, person_gender, person_education, person_income, person_emp_exp,
+    person_home_ownership, loan_amnt, loan_intent, loan_int_rate, loan_percent_income,
+    cb_person_cred_hist_length, credit_score, previous_loan_defaults_on_file,
+    model, scaler, feature_columns, model_type
+):
+    # Build and one-hot encode input DataFrame
+    # Align columns to training set
+    # Scale if needed
+    # Predict and return (class, probability)
+```
+
+- **Confidence Score:** Calculated as the probability assigned to the predicted class for this specific input.
+
+---
+
+## `compare_N_explain.py`
+
+This module handles **model selection and LLM-based explanations**.
+
+### Responsibilities
+
+- Loads Hugging Face API token from `.env`.
+- Compares F1-scores to pick the best model.
+- Builds a prompt summarizing the model metrics and decision.
+- Invokes the Hugging Face LLM endpoint to generate a JSON explanation.
+- Extracts and saves the LLM output to `../outputs/final_output.json`.
+
+### Core Functionality
+
+```python
+def run_explanation_pipeline(
+    ml_metrics, dl_metrics, final_prediction_label, confidence
+):
+    # Select best model by F1-score
+    # Build prompt for LLM
+    # Query LLM endpoint using langchain
+    # Parse JSON from LLM response
+    # Save result to output json
+```
+
+### Data Flow
 
 ```mermaid
 flowchart TD
-    Start[Start main py] --> ML[Train Random Forest]
-    ML --> DL[Train MLP]
-    DL --> Compare[Run Comparison and LLM]
-    Compare --> End[final_output json]
+    ML[ML Metrics (JSON)] --> Compare[Compare F1-score]
+    DL[DL Metrics (JSON)] --> Compare
+    Compare --> Prompt[Build LLM Prompt]
+    Prompt --> LLM[Query LLM]
+    LLM --> Parse[Parse JSON]
+    Parse --> Save[Save to final_output.json]
 ```
 
 ---
 
 ## `train_ml.py`
 
-This script handles **training and evaluating the Random Forest model** on the loan dataset.
+This script **trains and tunes the Random Forest classifier**.
 
-### Steps Performed
+### Responsibilities
 
-- **Data Loading & Preprocessing:** Uses `load_and_preprocess_data`.
-- **Model Training:** Random Forest with 200 trees and min 2 samples per leaf.
-- **Prediction & Evaluation:** Computes all key metrics.
-- **Persistence:** Saves model as `random_forest.pkl`.
-- **Returns:** Metrics and mean predicted probability as "confidence".
+- Loads and preprocesses data via `load_and_preprocess_data`.
+- Defines a hyperparameter search space for Random Forest.
+- Uses `RandomizedSearchCV` with `StratifiedKFold` (k=5) for tuning.
+- Evaluates the model using accuracy, precision, recall, F1-score, and OOB score.
+- Saves:
+  - The trained model (`random_forest.pkl`)
+  - Feature columns (`feature_columns.pkl`)
+  - Metrics (`ml_metrics.json`)
+- Returns artifacts for use in the pipeline.
 
-### Key Code Sections
-
-```python
-model = RandomForestClassifier(
-    n_estimators=200,
-    min_samples_leaf=2,
-    random_state=42,
-    n_jobs=-1
-)
-model.fit(X_train, y_train)
-y_pred = model.predict(X_test)
-y_prob = model.predict_proba(X_test)[:, 1]
-```
-
-### Returned Metrics
-
-- model: "Random Forest"
-- accuracy
-- precision
-- recall
-- f1
-- confidence (mean probability, as a percentage)
-
----
-
-## `preprocessing.py`
-
-This module contains **data ingestion and transformation logic** to prepare input features for both ML and DL models.
-
-### Preprocessing Pipeline
-
-1. **CSV Reading:** Loads the data.
-2. **Target Encoding:** Encodes `loan_status` if categorical.
-3. **Missing Value Imputation:**
-   - Numerical: median
-   - Categorical: most frequent
-4. **One-Hot Encoding:** On categorical features.
-5. **Train-Test Split:** 80%/20%, stratified by target.
-6. **Scaling:** StandardScaler for features (for DL).
-
-### Returns
-
-- Raw and scaled train/test splits for maximum flexibility.
-
-### Function
+### Core Steps
 
 ```python
-def load_and_preprocess_data(csv_path):
-    # Steps as described above
-    return X_train, X_test, X_train_scaled, X_test_scaled, y_train, y_test
+def train_ml():
+    # Load and preprocess data
+    # Define Random Forest and hyperparameter grid
+    # Tune with RandomizedSearchCV + StratifiedKFold
+    # Evaluate and save model, metrics, feature columns
+    # Return all artifacts
 ```
+
+### Hyperparameter Optimization
+
+- n_estimators, max_depth, min_samples_split, min_samples_leaf, max_features, bootstrap, class_weight.
+- **OOB Score:** Used for additional internal validation.
 
 ---
 
 ## `train_mlp.py`
 
-This script implements the **Deep Learning model** — an MLP (ANN) — using TensorFlow/Keras.
+This script **trains and tunes the Deep Learning model** (MLPClassifier from scikit-learn).
 
-### Steps Performed
+### Responsibilities
 
-- **Preprocessing:** Uses scaled data from `preprocessing.py`.
-- **Model Architecture:**
-  - Dense(128) → Dropout(0.3)
-  - Dense(64) → Dropout(0.25)
-  - Dense(32) → Dropout(0.2)
-  - Output: Dense(1, sigmoid)
-- **Compilation:**
-  - Optimizer: Adam
-  - Loss: binary_crossentropy
-  - Metrics: accuracy
-- **Training:** Up to 50 epochs, early stopping with patience 6.
-- **Prediction:** On test set, thresholded at 0.5.
-- **Persistence:** Saves model as `mlp_model.h5`.
-- **Returns:** Metrics and mean prediction probability ("confidence").
+- Loads and preprocesses data (with scaling).
+- Defines a hyperparameter search space for the MLP.
+- Uses `RandomizedSearchCV` + `StratifiedKFold` (k=5) for tuning.
+- Evaluates the model with standard metrics (accuracy, precision, recall, F1-score).
+- Saves:
+  - The trained MLP (`mlp_classifier.pkl`)
+  - The scaler (`scaler.pkl`)
+  - Feature columns (`feature_columns.pkl`)
+  - Metrics (`dl_metrics.json`)
+- Returns trained model and artifacts.
 
-### Model Summary
+### Core Steps
 
-| Layer   | Units | Activation | Dropout |
-|---------|-------|------------|---------|
-| Dense   | 128   | relu       | 0.3     |
-| Dense   | 64    | relu       | 0.25    |
-| Dense   | 32    | relu       | 0.2     |
-| Output  | 1     | sigmoid    | -       |
+```python
+def train_mlp():
+    # Load and preprocess data (scaled)
+    # Define MLP and hyperparameter grid
+    # Tune with RandomizedSearchCV + StratifiedKFold
+    # Evaluate and save model, scaler, metrics, columns
+    # Return all artifacts
+```
 
 ---
 
-## `final_output.json`
+## `preprocessing.py`
 
-This file contains the **final, human-readable, LLM-generated explanation** in machine-consumable JSON.
+This module **prepares the data** for both ML and DL training.
 
-### Example Content
+### Responsibilities
+
+- Loads CSV dataset.
+- Encodes the target (`loan_status`) if categorical.
+- Imputes missing values:
+  - **Numerical:** Median
+  - **Categorical:** Most frequent
+- One-hot encodes all categorical features.
+- Splits data into 80/20 train/test sets (stratified).
+- Applies `StandardScaler` (for DL model input).
+- Returns both raw and scaled train/test splits, scaler, and feature columns.
+
+### Core Function
+
+```python
+def load_and_preprocess_data(csv_path):
+    # Read, encode, impute, one-hot, split, scale, return artifacts
+```
+
+---
+
+# 🧾 Final Output Format
+
+The pipeline generates a single **JSON result file** (in `outputs/final_output.json`):
 
 ```json
 {
   "prediction": "Loan Approved",
-  "confidence": "82.66%",
+  "confidence": "98.30%",
   "ml_vs_dl_comparison": "Random Forest achieved a higher F1-score than the MLP model.",
-  "llm_explanation": "The Random Forest model was chosen because it attained the highest F1-score (0.827) among the candidates, indicating better overall classification performance. Based on this model, the applicant meets the criteria for loan approval with a confidence of approximately 82.7%. This decision reflects the model's ability to balance precision and recall effectively."
+  "llm_explanation": "The loan was approved because the applicant meets the criteria as determined by the most accurate model. This reflects strong financial stability and a low risk of default."
 }
 ```
 
-### Structure
+---
 
-- **prediction:** Final decision ("Loan Approved" or "Loan Rejected")
-- **confidence:** Model's average confidence (%)
-- **ml_vs_dl_comparison:** Explanation of model selection
-- **llm_explanation:** Human-friendly reasoning (from the LLM)
+## 🔄 Reproducibility
+
+The project uses `random_state=42` across models and cross-validation to fix randomness. Hyperparameter tuning is deterministic under this configuration. All artifacts are saved, including model `.pkl` files, the scaler, feature columns, and metrics JSON files. This ensures consistent predictions and behavior across repeated runs.
 
 ---
 
-## `requirements.txt`
+# ▶️ How to Run
 
-Lists all dependencies required for running the system.
+1. **Set API Token:**  
+   Add Hugging Face token to `.env`:
 
-### Main Libraries
+   ```bash
+   HUGGINGFACEHUB_API_TOKEN=hf_your_token_here
+   ```
 
-- **langchain-huggingface / langchain / langchain_core:** For LLM orchestration.
-- **huggingface_hub:** Connects to Hugging Face endpoints.
-- **python-dotenv:** For environment variable management.
-- **scikit-learn:** ML models and preprocessing.
-- **tensorflow:** For the MLP (ANN) model.
-
-### Example
-
-```text
-langchain-huggingface
-langchain
-langchain_core
-langchain-community
-huggingface_hub
-python-dotenv
-scikit-learn
-tensorflow
-```
-
----
-
-# 📈 Model Training and Selection Pipeline
-
-Here's how the whole process fits together. This high-level view shows how each script contributes to the final explanation.
-
-```mermaid
-flowchart TD
-    A[Start main py] --> B[train_ml py - Train Random Forest]
-    B --> C[train_mlp py - Train MLP]
-    C --> D[compare_N_explain py - Compare F1 and Prompt LLM]
-    D --> E[final_output json]
-```
-
----
-
-# 🛠️ Key Implementation Ideas
-
-These points summarize the main design principles of the system. They help ensure responsible and interpretable AI behavior.
-
-- **Strict Metric-Based Selection:** Only the F1-score determines the winning model, ensuring a fair, quantitative comparison.
-- **Separation of Concerns:** ML/DL handle prediction; LLM only explains, never predicts.
-- **Robust Output Handling:** LLM output is always expected as JSON, parsed carefully for resilience to LLM quirks.
-- **Confidence Score:** Uses mean probability, not just binary outcome.
-- **Single-Command Pipeline:** After configuration, just run `python main.py` for the full process.
-
----
-
-# 📝 How To Run
-
-You can set up and execute the whole pipeline with these steps. They mirror the logic described earlier in the project overview.
-
-1. Set your **Hugging Face API Token** in `.env`
-2. Install dependencies:
+2. **Install Dependencies:**
 
    ```bash
    pip install -r requirements.txt
    ```
 
-3. Run the pipeline:
+3. **Run the Pipeline:**
 
    ```bash
    cd src
    python main.py
    ```
+
+---
+
+# 🧩 File Roles Table
+
+| File                    | Purpose                                              |
+|-------------------------|------------------------------------------------------|
+| `compare_N_explain.py`  | Compare models and generate LLM explanation          |
+| `__init__.py`           | Marks the package boundary, enables module imports   |
+| `main.py`               | Orchestrates the entire inference pipeline           |
+| `train_ml.py`           | Trains and tunes the Random Forest model             |
+| `train_mlp.py`          | Trains and tunes the MLP (ANN) model                 |
+| `preprocessing.py`      | Loads and preprocesses tabular data                  |
+| `predict_new.py`        | Runs predictions on new applicant input              |
+| `outputs/final_output.json` | Holds the final explanation result              |
+| `requirements.txt`      | List of required libraries for the project           |
+
+---
+
+# 🛠️ Key Implementation Concepts
+
+- **Strict F1-Score Selection:** The system always selects the model with the highest F1-score.
+- **Separation of Concerns:** ML/DL models predict; LLM only explains.
+- **Hyperparameter Tuning:** Both models are tuned via RandomizedSearchCV with StratifiedKFold.
+- **Confidence Calculation:** Based on the predicted probability for the applicant—not an average.
+- **Reproducibility:** Models, scalers, and feature columns are saved and reused.
 
 ---
 
@@ -630,24 +515,14 @@ You can set up and execute the whole pipeline with these steps. They mirror the 
 
 ---
 
-# 🧩 File Roles Table
+## 🏗️ Design Philosophy
 
-| File                  | Purpose                                             |
-|-----------------------|-----------------------------------------------------|
-| compare_N_explain.py  | Compare models and produce LLM-generated explanation|
-| __init__.py           | Marks package boundary                              |
-| main.py               | Orchestrates full pipeline                          |
-| train_ml.py           | Trains and evaluates Random Forest model            |
-| train_mlp.py          | Trains and evaluates MLP (ANN) model                |
-| preprocessing.py      | Data loading and preprocessing                      |
-| final_output.json     | Final JSON explanation output                       |
-| requirements.txt      | Dependency list                                     |
+The system maintains a clear separation between the prediction layer and the explanation layer. It uses a deterministic model selection rule based solely on F1-score. The LLM is sandboxed and cannot influence or override model predictions. The overall design focuses on modularity, reproducibility, and transparency.
 
 ---
 
 # ✅ Summary
 
-This system exemplifies responsible, end-to-end AI design: **models predict, LLM explains, and decision logic is always transparent**. Each file plays a distinct role in ensuring a robust, reproducible, and interpretable pipeline for loan approval automation and explanation.
+This pipeline integrates robust ML and DL models with a modern LLM explanation layer using industry best practices. **Predictions come from data-driven models; explanations come from the LLM, ensuring transparency and reliability.** Each file plays a dedicated role, resulting in a clear, reproducible, and interpretable system for automated loan approval and justification.
 
 ---
-
