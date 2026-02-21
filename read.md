@@ -521,6 +521,19 @@ The system maintains a clear separation between the prediction layer and the exp
 
 ---
 
+## 🔮 Future Improvements
+
+SHAP feature importance integration
+
+FastAPI deployment layer
+
+Docker containerization
+
+Model monitoring and drift detection
+
+CI/CD automation
+
+---
 # ✅ Summary
 
 This pipeline integrates robust ML and DL models with a modern LLM explanation layer using industry best practices. **Predictions come from data-driven models; explanations come from the LLM, ensuring transparency and reliability.** Each file plays a dedicated role, resulting in a clear, reproducible, and interpretable system for automated loan approval and justification.
