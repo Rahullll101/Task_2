@@ -147,12 +147,12 @@ flowchart TD
     TrainML --> EvalML[Evaluate RF Metrics]
     EvalML --> TrainDL[Train MLPClassifier]
     TrainDL --> EvalDL[Evaluate MLP Metrics]
-    EvalDL --> Compare[Compare Models (F1-score)]
+    EvalDL --> Compare[Compare Models by F1 Score]
     Compare --> Select[Select Best Model]
     Select --> Prompt[Build LLM Prompt]
     Prompt --> LLM[Call LLM for Explanation]
     LLM --> Output[Generate JSON Output]
-    Output --> End[End]
+    Output --> End[End Pipeline]
 ```
 
 ---
@@ -323,12 +323,12 @@ def run_explanation_pipeline(
 
 ```mermaid
 flowchart TD
-    ML[ML Metrics (JSON)] --> Compare[Compare F1-score]
-    DL[DL Metrics (JSON)] --> Compare
+    ML[ML Metrics JSON] --> Compare[Compare F1 Score]
+    DL[DL Metrics JSON] --> Compare
     Compare --> Prompt[Build LLM Prompt]
     Prompt --> LLM[Query LLM]
-    LLM --> Parse[Parse JSON]
-    Parse --> Save[Save to final_output.json]
+    LLM --> Parse[Parse JSON Response]
+    Parse --> Save[Save final_output.json]
 ```
 
 ---
